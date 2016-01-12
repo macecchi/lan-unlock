@@ -2,24 +2,24 @@
 
 // TODO: modularize!
 
-var https = require( 'https' ),
+var https = require( 'http' ),
 	fs = require( 'fs' ),
 
 	index = fs.readFileSync( 'index.html' ),
 	config = JSON.parse( fs.readFileSync( 'config.json' )),
 
 	// state switches can take time, so must keep track
-	currentState, awaitedState,
+	currentState = 'unlocked', awaitedState,
 	maxTries = 20, tries = 0, retryDelay = 500,
 
 	isScreenlocked = require( './isScreenlocked' ),
 	screensaver = require( './screensaverScript' ),
 	unlock = require( './unlockScript' )( config.password );
 
-var options = {
-	key: fs.readFileSync( 'local.key' ),
-	cert: fs.readFileSync( 'local.cert' )
-};
+// var options = {
+// 	key: fs.readFileSync( 'local.key' ),
+// 	cert: fs.readFileSync( 'local.cert' )
+// };
 
 function onRequest ( req, res ) {
     'use strict';
@@ -53,7 +53,8 @@ function onRequest ( req, res ) {
 						currentState = undefined;
 						unlock( res, unlockCallback );
 					} else {
-						sendJSON( res, {});
+						currentState = 'unlocked';
+						sendJSON( res, { state: currentState });
 					}
 				});
 
@@ -67,7 +68,8 @@ function onRequest ( req, res ) {
 						currentState = undefined;
 						screensaver( res, sleepCallback );
 					} else {
-						sendJSON( res, {});
+						currentState = 'locked';
+						sendJSON( res, { state: currentState });
 					}
 				});
 				eventName = 'locked';
@@ -84,6 +86,8 @@ function onRequest ( req, res ) {
 
 	} else if ( req.url == '/state' ) {
 		awaitAndSendState( res );
+		eventName = 'State requested';
+		logRequest( eventName, req );
     }
 }
 
@@ -100,12 +104,12 @@ function awaitAndSendState ( res ) {
 	setTimeout(function () {
 		isScreenlocked( function ( isLocked ) {
 			currentState = isLocked ? 'locked' : 'unlocked';
-			if ( !awaitedState || currentState === awaitedState ) {
-				tries = 0;
-				awaitedState = false;
+			// if ( !awaitedState || currentState === awaitedState ) {
+			// 	tries = 0;
+			// 	awaitedState = false;
 				sendJSON( res, { state: currentState });
-			}
-			else awaitAndSendState( res );
+			// }
+			// else awaitAndSendState( res );
 		});
 	}, retryDelay );
 	tries ++;
@@ -119,7 +123,8 @@ function unlockCallback ( res, err, rtn ) {
 		console.error( err );
 		resp.err = err;
 	} else {
-		resp.status = 'unlocked';
+		currentState = 'unlocked';
+		resp.state = 'unlocked';
 	}
 	sendJSON( res, resp );
 }
@@ -132,7 +137,8 @@ function sleepCallback ( res, err, rtn ) {
 		console.error( err );
 		resp.err = err;
 	} else {
-		resp.status = "screensaver activated";
+		currentState = 'locked';
+		resp.state = 'locked';
 	}
 	sendJSON( res, resp );
 }
@@ -174,4 +180,4 @@ function log ( logEntry ) {
 	console.log( logEntry );
 }
 
-https.createServer( options, onRequest ).listen( config.port );
+https.createServer( onRequest ).listen( config.port );
