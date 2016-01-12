@@ -1,6 +1,6 @@
 var applescript = require( 'applescript' );
 
-var script = 'do shell script "pmset displaysleepnow"';
+var script = 'do shell script "./lockscreen"';
 
 function lock ( res, callback ) {
 	applescript.execString( script , function ( err, rtn ) {
