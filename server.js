@@ -13,7 +13,7 @@ var https = require( 'http' ),
 	maxTries = 20, tries = 0, retryDelay = 500,
 
 	isScreenlocked = require( './isScreenlocked' ),
-	screensaver = require( './screensaverScript' ),
+	lock = require( './lockScript' ),
 	unlock = require( './unlockScript' )( config.password );
 
 // var options = {
@@ -66,7 +66,7 @@ function onRequest ( req, res ) {
 					if ( !isLocked ) {
 						awaitedState = 'locked';
 						currentState = undefined;
-						screensaver( res, sleepCallback );
+						lock( res, sleepCallback );
 					} else {
 						currentState = 'locked';
 						sendJSON( res, { state: currentState });
